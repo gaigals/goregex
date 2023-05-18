@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>go - Regex</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KK94CHFLLe+nY2dmCWGMq91rCGa5gtU4mk92HdvYe+M/SXH301p5ILy+dN9+nJOZ" crossorigin="anonymous">
+    <style>
+        .error {
+            color: red;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+
+        .highlight {
+            background-color: #ccffcc;
+        }
+
+        #textValue {
+            overflow: scroll;
+            white-space: pre;
+        }
+    </style>
+
+    <script>
+        var regexPattern;
+        var textArea;
+        var resultContainer;
+        var errorContainer;
+
+
+        document.addEventListener("DOMContentLoaded", function() {
+            regexPattern = document.getElementById("regexPattern");
+            textArea = document.getElementById("textValue");
+            resultContainer = document.getElementById("resultContainer");
+            errorContainer = document.getElementById("errorContainer");
+
+            textArea.addEventListener('input', handleClientInput);
+            textArea.addEventListener("input", handleRegexPatternInput);
+            regexPattern.addEventListener("input", handleRegexPatternInput);
+
+
+            textArea.addEventListener("click", function() {
+                textArea.focus();
+            });
+        });
+
+        function handleClientInput() {
+            castAsSPANSs();
+        }
+
+        function castAsSPANSs() {
+            // Get the current text content of the text area
+            const text = textArea.textContent;
+
+            // Construct the updated HTML content
+            let html = '';
+            for (let i = 0; i < text.length; i++) {
+                const charId = `char-${i}`; // Generate the ID for the span
+
+                // Wrap each character in a span with a unique ID
+                html += `<span id="${charId}">${text.charAt(i)}</span>`;
+            }
+
+            // Update the HTML content of the text area
+            // textArea.innerHTML = html;
+            updateInnerHTML(html)
+        }
+
+        function handleRegexPatternInput() {
+            const patternValue = regexPattern.value;
+            const textAreaValue = textArea.textContent;
+
+
+            if (regexPattern !== "" && textAreaValue !== "") {
+                performRegexRequest(patternValue, textAreaValue);
+            }
+        }
+
+        function performRegexRequest(regexPattern, input) {
+            const data = new URLSearchParams();
+            data.append("regexPattern", regexPattern);
+            data.append("textValue", input);
+
+            return fetch("/regex", {
+                method: "POST",
+                body: data
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error(`Request failed with status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.Error) {
+                        showErrorText(data.Error);
+                        return;
+                    }
+
+                    clearErrorText();
+
+                    if (!data.Matched) {
+                        castAsSPANSs();
+                        return;
+                    }
+
+                    highlightMatches(data.Matched);
+                })
+                .catch(error => {
+                    throw new Error(`Request failed with status: ${error}`);
+                });
+
+        }
+
+        function showErrorText(error) {
+            errorContainer.textContent = error;
+        }
+
+        function clearErrorText() {
+            errorContainer.textContent = "";
+        }
+
+        function highlightMatches(matchIndexes) {
+            const text = textArea.textContent;
+            const textLength = text.length;
+            let markedText = '';
+
+            for (let i = 0; i < textLength; i++) {
+                const char = text.charAt(i);
+                const isHighlighted = matchIndexes.some(([startIndex, endIndex]) => i >= startIndex && i < endIndex);
+
+                if (isHighlighted) {
+                    markedText += `<span class="highlight">${char}</span>`;
+                    continue;
+                }
+
+                markedText += `<span id="char-${i}">${char}</span>`;
+            }
+
+            // textArea.innerHTML = markedText;
+            updateInnerHTML(markedText);
+        }
+
+        function isTextAreaFocused() {
+            return document.activeElement === textArea;
+        }
+
+        function updateInnerHTML(html) {
+            let startPosition;
+            const updateCursor = isTextAreaFocused();
+
+            if (updateCursor) startPosition = getPosition();
+
+            const currentTextContent = textArea.textContent;
+            textArea.innerHTML = html;
+
+            if (!updateCursor || !startPosition)
+                return;
+
+            const diff = extractTextFromHTML(html).length - currentTextContent.length;
+            const newCursorPosition = startPosition + diff;
+
+            restoreCursor(newCursorPosition);
+        }
+
+        function restoreCursor(position) {
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.setStart(textArea, position);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+
+        function extractTextFromHTML(html) {
+            const tempElement = document.createElement('div');
+            tempElement.innerHTML = html;
+            return tempElement.textContent;
+        }
+
+        function getPosition() {
+            let position = null;
+            if (!window.getSelection) {
+                return null;
+            }
+
+            const sel = window.getSelection();
+            if (sel.rangeCount === 0) {
+                return null
+            }
+
+            const range = sel.getRangeAt(0);
+            const clonedRange = range.cloneRange();
+            clonedRange.selectNodeContents(textArea);
+            clonedRange.setEnd(range.endContainer, range.endOffset);
+            position = clonedRange.toString().length;
+            return position;
+        }
+        function htmlToString(text) {
+           return replaceBRs(
+               replaceDIVs(
+                   removeMarks(text)
+               )
+           )
+        }
+
+        function stringToHTML(text) {
+            const lines = text.split('\n');
+            return lines.map(line => `<div>${line}</div>`).join('');
+        }
+
+        function replaceBRs(text) {
+            return text.replace(/<br>/g, '');
+        }
+
+        function replaceDIVs(text) {
+            return text.replace(/<div>/g, '').replace(/<\/?div>/g, '\n');
+        }
+
+        function removeMarks(text) {
+            return text.replace(/<\/?mark>/g, '');
+        }
+    </script>
+</head>
+<body>
+<div class="container mt-5">
+    <h1>Regex Input</h1>
+        <div class="form-group">
+            <label for="regexPattern">Input Field</label>
+            <input type="text" class="form-control" style="height: 60px;" id="regexPattern" placeholder="Enter your input">
+            <p id="errorContainer" class="error"></p>
+            <p id="resultContainer" class="hidden"></p>
+        </div>
+        <div class="form-group" style="margin-top: 20px">
+            <div id="textValue" class="form-control" contenteditable="true" tabindex="0" style="width: 100%; height: 200px"></div>
+        </div>
+</div>
+</body>
+</html>
