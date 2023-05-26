@@ -1,12 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
-	"regexp"
+	"path/filepath"
 )
 
 const (
@@ -15,17 +14,25 @@ const (
 )
 
 type Result struct {
-	Matched [][]int
-	Error   string
+	HTML  string
+	Error string
 }
 
 func main() {
 	http.HandleFunc("/", handleHTMLContent)
+	http.HandleFunc("/static/", serveStaticFiles)
 	http.HandleFunc("/regex", handleRegexPost)
 
 	fmt.Println("Server started on http://localhost:80")
 
 	log.Fatalln(http.ListenAndServe(":80", nil))
+}
+
+func serveStaticFiles(w http.ResponseWriter, r *http.Request) {
+	filePath := r.URL.Path[len("/static/"):]
+	serveFile := filepath.Join("static", filePath)
+
+	http.ServeFile(w, r, serveFile)
 }
 
 func handleHTMLContent(w http.ResponseWriter, r *http.Request) {
@@ -61,25 +68,26 @@ func handleRegexPost(w http.ResponseWriter, r *http.Request) {
 	input := r.FormValue(paramTextValue)
 	regexPattern := r.FormValue(paramRegexPattern)
 
-	// Convert the response to JSON
-	jsonResponse, err := json.Marshal(matchString(regexPattern, input))
+	jsonBytes, err := NewBuilder(input).
+		CompileRegex(regexPattern).
+		MatchString().
+		BuildResponse()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println(string(jsonResponse))
 	// Set the JSON content type
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(jsonResponse)
+	_, _ = w.Write(jsonBytes)
 }
 
-func matchString(regexPattern, value string) Result {
-	regex, err := regexp.Compile(regexPattern)
-	if err != nil {
-		return Result{Error: err.Error()}
-	}
-
-	return Result{Matched: regex.FindAllStringSubmatchIndex(value, -1)}
-}
+// func matchString(regexPattern, value string) Result {
+// 	regex, err := regexp.Compile(regexPattern)
+// 	if err != nil {
+// 		return Result{Error: err.Error()}
+// 	}
+//
+// 	return Result{Matched: regex.FindAllStringSubmatchIndex(value, -1)}
+// }

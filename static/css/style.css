@@ -1,0 +1,43 @@
+.error {
+    color: red;
+}
+
+.bold {
+    /*font-weight: 600;*/
+    /*background-color: #3B3EAC;*/
+}
+
+.highlight {
+    background-color: #ccffcc;
+}
+
+#textValue {
+    overflow: scroll;
+    white-space: pre-wrap;
+}
+
+.logo-container {
+    width: 100%;
+    margin-top: -20pt;
+    margin-left: -10pt;
+    display: inline-flex;
+    cursor: default;
+    user-select: none;
+}
+
+.logo-svg {
+    /*width: 150px;*/
+    height: 112pt;
+}
+
+.logo-regex {
+    color: #FF8C00;
+    font-size: 36pt;
+    font-weight: 600;
+    line-height: 112pt;
+    margin-left: -7pt;
+}
+
+.color-readish {
+    color: #db0303;
+}
