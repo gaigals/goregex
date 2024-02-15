@@ -11,6 +11,8 @@ import (
 const (
 	paramRegexPattern = "regexPattern"
 	paramTextValue    = "textValue"
+
+	serverPort = "3000"
 )
 
 type Result struct {
@@ -23,14 +25,14 @@ func main() {
 	http.HandleFunc("/static/", serveStaticFiles)
 	http.HandleFunc("/regex", handleRegexPost)
 
-	fmt.Println("Server started on http://localhost:80")
+	fmt.Printf("Server started on http://localhost:%s\n", serverPort)
 
-	log.Fatalln(http.ListenAndServe(":80", nil))
+	log.Fatalln(http.ListenAndServe(fmt.Sprintf(":%s", serverPort), nil))
 }
 
 func serveStaticFiles(w http.ResponseWriter, r *http.Request) {
 	filePath := r.URL.Path[len("/static/"):]
-	serveFile := filepath.Join("static", filePath)
+	serveFile := filepath.Join("../static", filePath)
 
 	http.ServeFile(w, r, serveFile)
 }
@@ -41,7 +43,7 @@ func handleHTMLContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := template.ParseFiles("templ/index.html")
+	tmpl, err := template.ParseFiles("../templ/index.html")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

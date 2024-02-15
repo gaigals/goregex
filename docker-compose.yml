@@ -1,0 +1,13 @@
+version: "3.5"
+
+services:
+  goregex_web:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+    container_name: goregex
+    restart: always
+    volumes:
+      - ./web/:/home/goregex/web
+    ports:
+      - "8081:3000"
